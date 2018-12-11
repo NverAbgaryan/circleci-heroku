@@ -1,0 +1,86 @@
+version: 2
+jobs:
+  build-and-run-tests:
+    docker:
+    - image: circleci/node:10.14.1
+      environment:
+        APP_SECRET_KEY: ${APP_SECRET_KEY}
+    steps:
+    - checkout
+    - run:
+        name: Install Server Dependencies
+        working_directory: server
+        command: npm install
+    - run:
+        name: Server API Tests
+        working_directory: server
+        command:  npm run test
+  deploy-development:
+    docker:
+      - image: circleci/node:10.14.1
+        environment:
+          APP_SECRET_KEY: ${APP_SECRET_KEY}
+    steps:
+    - checkout
+    - run:
+        name: Deploy Master to Heroku
+        command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git dev
+  deploy-production:
+    docker:
+      - image: circleci/node:10.14.1
+        environment:
+          APP_SECRET_KEY: ${APP_SECRET_KEY}
+    steps:
+      - checkout
+      - run:
+          name: Deploy Master to Heroku
+          command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git master
+  deploy-staging:
+    docker:
+      - image: circleci/node:10.14.1
+        environment:
+          APP_SECRET_KEY: ${APP_SECRET_KEY}
+    steps:
+      - checkout
+      - run:
+          name: Deploy Master to Heroku
+          command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git dev
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+      - build-and-run-tests
+      - deploy-development:
+          filters:
+            branches:
+              only:
+                - dev
+          requires:
+            - build-and-run-tests
+      - hold_to_staging:
+          type: approval
+          filters:
+            branches:
+              only: dev
+          requires:
+            - deploy-development
+      - deploy-staging:
+          filters:
+            branches:
+              only: dev
+          requires:
+            - hold_to_staging
+      - hold_to_production:
+          type: approval
+          filters:
+            branches:
+              only: dev
+          requires:
+            - deploy-staging
+      - deploy-production:
+          filters:
+            branches:
+              only: dev
+          requires:
+            - hold_to_production
