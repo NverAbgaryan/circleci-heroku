@@ -1,86 +1,75 @@
 version: 2
 jobs:
-  build-and-run-tests:
+  build:
     docker:
-    - image: circleci/node:10.14.1
-      environment:
-        APP_SECRET_KEY: ${APP_SECRET_KEY}
+      - image: circleci/php:7.2-apache-node-browsers
     steps:
-    - checkout
-    - run:
-        name: Install Server Dependencies
-        working_directory: server
-        command: npm install
-    - run:
-        name: Server API Tests
-        working_directory: server
-        command:  npm run test
+      - checkout
+      - run:
+          name: dir structure info
+          command: pwd && ls -al
+      - run:
+          name: composer install
+          command: composer install
   deploy-development:
     docker:
-    - image: circleci/node:10.14.1
-      environment:
-        APP_SECRET_KEY: ${APP_SECRET_KEY}
+      - image: circleci/php:7.2-apache-node-browsers
     steps:
-    - checkout
-    - run:
-        name: Deploy Master to Heroku
-        command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git dev
-  deploy-production:
-    docker:
-    - image: circleci/node:10.14.1
-      environment:
-        APP_SECRET_KEY: ${APP_SECRET_KEY}
-    steps:
-    - checkout
-    - run:
-        name: Deploy Master to Heroku
-        command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git master
+      - add_ssh_keys
+      - deploy:
+          name: wirestock-api-dev
+          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_DEV_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
   deploy-staging:
     docker:
-    - image: circleci/node:10.14.1
-      environment:
-        APP_SECRET_KEY: ${APP_SECRET_KEY}
+      - image: circleci/php:7.2-apache-node-browsers
     steps:
-    - checkout
-    - run:
-        name: Deploy Master to Heroku
-        command: git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$YOUR_HEROKU_APP_NAME.git dev
-
+      - add_ssh_keys
+      - deploy:
+          name: wirestock-api-stg
+          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_STAGING_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
+  deploy-production:
+    docker:
+      - image: circleci/php:7.2-apache-node-browsers
+    steps:
+      - add_ssh_keys
+      - deploy:
+          name: wirestock-api-prod
+          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_PRODUCTION_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
 workflows:
   version: 2
   build-and-deploy:
     jobs:
-      - build-and-run-tests
+      - build
       - deploy-development:
           filters:
             branches:
               only:
-                - dev
+                - master
           requires:
-            - build-and-run-tests
+            - build
       - hold_to_staging:
           type: approval
           filters:
             branches:
-              only: dev
+              only: master
           requires:
             - deploy-development
       - deploy-staging:
           filters:
             branches:
-              only: dev
+              only: master
           requires:
             - hold_to_staging
       - hold_to_production:
           type: approval
           filters:
             branches:
-              only: dev
+              only: master
           requires:
             - deploy-staging
       - deploy-production:
           filters:
             branches:
-              only: dev
+              only: master
           requires:
             - hold_to_production
