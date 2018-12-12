@@ -33,14 +33,11 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
-      - build
       - deploy-development:
           filters:
             branches:
               only:
                 - master
-          requires:
-            - build
       - hold_to_staging:
           type: approval
           filters:
