@@ -8,9 +8,6 @@ jobs:
       - run:
           name: dir structure info
           command: pwd && ls -al
-      - run:
-          name: composer install
-          command: composer install
   deploy-development:
     docker:
       - image: circleci/php:7.2-apache-node-browsers
@@ -18,7 +15,6 @@ jobs:
       - add_ssh_keys
       - deploy:
           name: wirestock-api-dev
-          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_DEV_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
   deploy-staging:
     docker:
       - image: circleci/php:7.2-apache-node-browsers
@@ -26,7 +22,6 @@ jobs:
       - add_ssh_keys
       - deploy:
           name: wirestock-api-stg
-          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_STAGING_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
   deploy-production:
     docker:
       - image: circleci/php:7.2-apache-node-browsers
@@ -34,7 +29,6 @@ jobs:
       - add_ssh_keys
       - deploy:
           name: wirestock-api-prod
-          command: ssh -vv -o "StrictHostKeyChecking no" ${SSH_USER}@${SSH_PRODUCTION_HOST} "cd /var/www/wirestock && git checkout master && git pull && sudo chmod a+x provision.sh && ./provision.sh"
 workflows:
   version: 2
   build-and-deploy:
